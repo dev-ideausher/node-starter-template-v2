@@ -1,10 +1,10 @@
 # Node-starter-template-v2
 
-1. Config
+1. Config - You can add your all configuation and external settings in this
     - contains the validation and logic to export the env variables
     - contains the loggers to handle custom logs, errors or exceptions etc occuring throughout the codebase be it internal or your own logs
 
-2. Constants - contains the constant variable that could be types, options that are used in different models, validations, controllers etc
+2. Constants - contains the constant variables that could be types, options that are used in different models, validations, controllers etc
 
 3. Controllers - contains the function that takes over the request once its validated & authenticated by the middlewares. This is the place where you ensure all the checks/errorHandling, data manipulation/extraction & prepartion of data which will be required by the services.
 
