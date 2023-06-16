@@ -1,8 +1,8 @@
 # Node-starter-template-v2
 
-1. Config - 
-  - contains the validation and logic to export the env variables
-  - contains the loggers to handle custom logs, errors or exceptions etc occuring throughout the codebase be it internal or your own logs
+1. Config
+    - contains the validation and logic to export the env variables
+    - contains the loggers to handle custom logs, errors or exceptions etc occuring throughout the codebase be it internal or your own logs
 
 2. Constants - contains the constant variable that could be types, options that are used in different models, validations, controllers etc
 
