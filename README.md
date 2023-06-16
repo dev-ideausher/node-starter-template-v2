@@ -31,6 +31,6 @@
 - You have to save the .env file locally with required variables mentioned in config/config.js
 - If you don't use any or specific microservice then please remove their validation & cancel their export from config/config.js, otherwise app won't run.
 
-_Codebase should be a graden where you can move around easily and peacefully._
+_Codebase should be like a graden where everyone can move around easily and peacefully._
 
 **_HAPPY CODING..._**
