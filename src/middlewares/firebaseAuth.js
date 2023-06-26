@@ -12,10 +12,10 @@ admin.initializeApp({
 
 const firebaseAuth = () => async (req, res, next) => {
     return new Promise( async (resolve, reject) => {
-        const token = req.headers.authorization.split(" ")[1]
-        // token not found
-        if(!token) { reject(new ApiError(httpStatus.BAD_REQUEST, "Please Authenticate!")); }
         try {
+            const token = req.headers?.authorization?.split(" ")[1]
+            // token not found
+            if(!token) { reject(new ApiError(httpStatus.BAD_REQUEST, "Please Authenticate!")); }
             const payload = await admin.auth().verifyIdToken(token, true);
             const user = await authService.getUserByFirebaseUId(payload.uid);
             if(!user) {
