@@ -1,51 +1,153 @@
+const { default: mongoose } = require("mongoose");
+
 const paginate = (schema) => {
   schema.statics.paginate = async function (
-    filter,
+    filters,
     options,
     geoFilters = null
   ) {
-    const sortOrder = options.sortOrder === "desc" ? -1 : 1;
-    const sortField = options.sortBy ? options.sortBy : "createdAt";
+    // defining pipeline
+    const pipeline = [];
+    // filtering the docs as per the provided filters
+    pipeline.push({ $match: filters || {} });
+
+    // defining the limit that user is requesting
     const limit =
       options.limit && parseInt(options.limit, 10) > 0
         ? parseInt(options.limit, 10)
         : 10;
+    // defining the page or offset user is requesting
     const page =
       options.page && parseInt(options.page, 10) > 0
         ? parseInt(options.page, 10)
         : 1;
+    // defining the skip count that user is requesting
     const skip = (page - 1) * limit;
-    const countPromise = this.countDocuments(filter).exec();
-    let docsPromise = this.find(filter)
-      .sort({ [sortField]: sortOrder })
-      .skip(skip)
-      .limit(limit);
 
+    // defining the Pipeline that documents has to go through
+    let docsPipeline = [...pipeline];
+
+    // adding location based search filters if given by user
     if (geoFilters) {
-      docsPromise = docsPromise.where(geoFilters);
+      docsPipeline.push({ $match: geoFilters });
     }
+
+    // populating the fields if requested by user
     if (options.populate) {
+      // pattern is `path::select1,select2:matchCondition2,select3`[]
+      // e.g. "createdBy::name:tushar,email" => "createdBy::name:tushar,email"
+      // converting to array if option is given in form of string
       const populateOptions = Array.isArray(options.populate)
         ? options.populate
         : [options.populate];
-      const populateStore = {};
+      // iterating over the populate options
       populateOptions.forEach((populateOption) => {
-        const [path, select] = populateOption.split(":");
-        populateStore[path] = populateStore[path]
-          ? `${populateStore[path]} ${select}`
-          : select;
-      });
-      Object.keys(populateStore).forEach((key) => {
-        docsPromise = docsPromise.populate({
-          path: key,
-          select: populateStore[key],
+        const matchObj = {};
+        // seperating the path and fields that has to be selected from the the reffered collection
+        const [path, select] = populateOption.split("::");
+        // getting the name of collection where the field is referring to
+        const collectionName = mongoose.model(
+          this.schema.path(path).options.ref
+        ).collection.name;
+        // iterating over the fields that has to be selected
+        const selectFields = select.split(",").map((ele) => {
+          // seperating the requested select field from its match condition
+          // e.g. i want name field but its value should match with pattern "Manish"
+          // meaning extract documents from THIS collection who has "Manish" in the name field of the REFFERED collection
+          const [name, match] = ele.split(":");
+          // storing requested pattern match for a specific field
+          if (match) matchObj[name] = match;
+          return name;
+        });
+
+        // defining lookup for the current path
+        const lookup = {
+          $lookup: {
+            from: collectionName,
+            localField: path,
+            foreignField: "_id",
+            as: path,
+            ...(Object.keys(matchObj).length > 0
+              ? {
+                  pipeline: [
+                    // pipeline if there are any matches has to be performed
+                    {
+                      $match: {
+                        $or: Object.keys(matchObj).map((key) => ({
+                          [key]: new RegExp(matchObj[key], "i"),
+                        })),
+                      },
+                    },
+                  ],
+                }
+              : {}),
+          },
+        };
+        // pushing this in docsPipeline
+        docsPipeline.push(lookup);
+        // check if the document is selected or not by the lookup
+        // if it is populate the requested select fields into the current document i.e. ROOT
+        // if not the set document to empty so that we can exclude it
+        docsPipeline.push({
+          $replaceRoot: {
+            newRoot: {
+              $cond: {
+                if: { $gt: [{ $size: `$${path}` }, 0] },
+                then: {
+                  $mergeObjects: [
+                    "$$ROOT",
+                    {
+                      [path]: Object.assign(
+                        {},
+                        ...selectFields.map((field) => ({
+                          [field]: { $arrayElemAt: [`$${path}.${field}`, 0] },
+                        }))
+                      ),
+                    },
+                  ],
+                },
+                else: {},
+              },
+            },
+          },
+        });
+        // applying filter to exclude the document
+        // if the above step hasn't populated the fields
+        docsPipeline.push({
+          $match: {
+            $expr: {
+              $ne: ["$$ROOT", {}],
+            },
+          },
         });
       });
     }
-    docsPromise = docsPromise.exec();
+    // defining the sort order and sort field
+    const sortOrder = options.sortOrder === "desc" ? -1 : 1;
+    const sortField = options.sortBy ? options.sortBy : "createdAt";
 
+    // calculating the total count of docs we got from the defined pipeline
+    const countPipeline = [...pipeline];
+
+    // applying the defined limit, sort and skip
+    pipeline.push({ $sort: { [sortField]: sortOrder } });
+    pipeline.push({ $skip: skip }, { $limit: limit });
+
+    // pushing the totalCount for allowing pagination
+    countPipeline.push({ $count: "totalResults" });
+
+    // to retrieve the value of total count
+    const countPromise = this.aggregate(countPipeline).exec();
+
+    // to execute the pipeline
+    const docsPromise = this.aggregate(docsPipeline).exec();
+
+    // resolving the promises
     return Promise.all([countPromise, docsPromise]).then((values) => {
-      const [totalResults, results] = values;
+      // seperating the counts and resulted docs
+      const [counts, results] = values;
+      const { totalResults = 0 } = counts.length > 0 ? counts[0] : {};
+      // defining total pages based on total results and limit
       const totalPages = Math.ceil(totalResults / limit);
       const result = {
         page,
