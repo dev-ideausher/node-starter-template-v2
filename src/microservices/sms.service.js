@@ -6,17 +6,19 @@ const client = require("twilio")(sid, authToken);
 
 // body: string
 async function sendSMSToContacts(contacts, body) {
-    const result = { success: [], failure: [] };
-    const msgPromises = contacts.map((user) => {
-        client.messages
-          .create({ body, from: phone, to: user.phone })
-            .then(() => result.success.push(user))
-            .catch((e) => { console.log(e); result.failure.push(user); });
-    })
-    await Promise.all(msgPromises);
-    return result;
+  const msgPromises = contacts.map(async (user) => {
+    return client.messages
+      .create({ body, from: phone, to: user.phone })
+      .then(() => false)
+      .catch((e) => {
+        console.log(e);
+        return user;
+      });
+  });
+  const failures = await Promise.all(msgPromises);
+  return failures.filter((f) => !!f);
 }
 
 module.exports = {
-    sendSMSToContacts
-}
+  sendSMSToContacts,
+};
