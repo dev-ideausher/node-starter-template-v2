@@ -1,15 +1,17 @@
-const { default: mongoose } = require("mongoose");
+const {default: mongoose} = require('mongoose');
 
-const paginate = (schema) => {
-  schema.statics.paginate = async function (
+const paginate = schema => {
+  schema.statics.paginate = async function(
     filters,
     options,
     geoFilters = null
   ) {
     // defining pipeline
     const pipeline = [];
+    // sepearte post populate filters from initial filters
+    const {postPopulateFilters, ...initialFilters} = filters;
     // filtering the docs as per the provided filters
-    pipeline.push({ $match: filters || {} });
+    pipeline.push({$match: initialFilters || {}});
 
     // defining the limit that user is requesting
     const limit =
@@ -25,11 +27,11 @@ const paginate = (schema) => {
     const skip = (page - 1) * limit;
 
     // defining the Pipeline that documents has to go through
-    let docsPipeline = [...pipeline];
+    let docsPipeline = [...pipeline, ...(options.pipeline || [])];
 
     // adding location based search filters if given by user
     if (geoFilters) {
-      docsPipeline.push({ $match: geoFilters });
+      docsPipeline.push({$match: geoFilters});
     }
 
     // populating the fields if requested by user
@@ -41,20 +43,19 @@ const paginate = (schema) => {
         ? options.populate
         : [options.populate];
       // iterating over the populate options
-      populateOptions.forEach((populateOption) => {
+      populateOptions.forEach(populateOption => {
         const matchObj = {};
         // seperating the path and fields that has to be selected from the the reffered collection
-        const [path, select] = populateOption.split("::");
+        const [path, select] = populateOption.split('::');
         // getting the name of collection where the field is referring to
-        const collectionName = mongoose.model(
-          this.schema.path(path).options.ref
-        ).collection.name;
+        const collectionName = mongoose.model(this.schema.obj[path].ref)
+          .collection.name;
         // iterating over the fields that has to be selected
-        const selectFields = select.split(",").map((ele) => {
+        const selectFields = select.split(',').map(ele => {
           // seperating the requested select field from its match condition
           // e.g. i want name field but its value should match with pattern "Manish"
           // meaning extract documents from THIS collection who has "Manish" in the name field of the REFFERED collection
-          const [name, match] = ele.split(":");
+          const [name, match] = ele.split(':');
           // storing requested pattern match for a specific field
           if (match) matchObj[name] = match;
           return name;
@@ -65,7 +66,7 @@ const paginate = (schema) => {
           $lookup: {
             from: collectionName,
             localField: path,
-            foreignField: "_id",
+            foreignField: '_id',
             as: path,
             ...(Object.keys(matchObj).length > 0
               ? {
@@ -73,8 +74,8 @@ const paginate = (schema) => {
                     // pipeline if there are any matches has to be performed
                     {
                       $match: {
-                        $or: Object.keys(matchObj).map((key) => ({
-                          [key]: new RegExp(matchObj[key], "i"),
+                        $or: Object.keys(matchObj).map(key => ({
+                          [key]: new RegExp(matchObj[key], 'i'),
                         })),
                       },
                     },
@@ -92,17 +93,25 @@ const paginate = (schema) => {
           $replaceRoot: {
             newRoot: {
               $cond: {
-                if: { $gt: [{ $size: `$${path}` }, 0] },
+                if: {$gt: [{$size: `$${path}`}, 0]},
                 then: {
                   $mergeObjects: [
-                    "$$ROOT",
+                    '$$ROOT',
                     {
-                      [path]: Object.assign(
-                        {},
-                        ...selectFields.map((field) => ({
-                          [field]: { $arrayElemAt: [`$${path}.${field}`, 0] },
-                        }))
-                      ),
+                      [path]: {
+                        $map: {
+                          input: `$${path}`,
+                          as: 'element',
+                          in: {
+                            $mergeObjects: [
+                              ...selectFields.map(field => ({
+                                [field]: `$$element.${field}`,
+                              })),
+                              {_id: '$$element._id'},
+                            ],
+                          },
+                        },
+                      },
                     },
                   ],
                 },
@@ -116,25 +125,34 @@ const paginate = (schema) => {
         docsPipeline.push({
           $match: {
             $expr: {
-              $ne: ["$$ROOT", {}],
+              $ne: ['$$ROOT', {}],
             },
           },
         });
       });
+      if (postPopulateFilters) {
+        docsPipeline.push({
+          $match: postPopulateFilters,
+        });
+      }
+    }
+
+    if (options.project) {
+      docsPipeline.push({$project: {...options.project}});
     }
     // defining the sort order and sort field
-    const sortOrder = options.sortOrder === "desc" ? -1 : 1;
-    const sortField = options.sortBy ? options.sortBy : "createdAt";
+    const sortOrder = options.sortOrder === 'desc' ? -1 : 1;
+    const sortField = options.sortBy ? options.sortBy : 'createdAt';
 
     // calculating the total count of docs we got from the defined pipeline
-    const countPipeline = [...pipeline];
+    const countPipeline = [...docsPipeline];
 
     // applying the defined limit, sort and skip
-    pipeline.push({ $sort: { [sortField]: sortOrder } });
-    pipeline.push({ $skip: skip }, { $limit: limit });
+    docsPipeline.push({$sort: {[sortField]: sortOrder}});
+    docsPipeline.push({$skip: skip}, {$limit: limit});
 
     // pushing the totalCount for allowing pagination
-    countPipeline.push({ $count: "totalResults" });
+    countPipeline.push({$count: 'totalResults'});
 
     // to retrieve the value of total count
     const countPromise = this.aggregate(countPipeline).exec();
@@ -143,10 +161,10 @@ const paginate = (schema) => {
     const docsPromise = this.aggregate(docsPipeline).exec();
 
     // resolving the promises
-    return Promise.all([countPromise, docsPromise]).then((values) => {
+    return Promise.all([countPromise, docsPromise]).then(values => {
       // seperating the counts and resulted docs
       const [counts, results] = values;
-      const { totalResults = 0 } = counts.length > 0 ? counts[0] : {};
+      const {totalResults = 0} = counts.length > 0 ? counts[0] : {};
       // defining total pages based on total results and limit
       const totalPages = Math.ceil(totalResults / limit);
       const result = {
@@ -161,4 +179,4 @@ const paginate = (schema) => {
   };
 };
 
-module.exports = { paginate };
+module.exports = {paginate};
