@@ -8,6 +8,17 @@ const paginate = schema => {
   ) {
     // defining pipeline
     const pipeline = [];
+    if (geoFilters) {
+      const { longitude, latitude, radius = 1 } = geoFilters;
+      pipeline.push({
+        $geoNear: {
+            near: { type: "Point", coordinates: [ longitude, latitude ] },
+            distanceField: "dist.calculated",
+            maxDistance: 1609.34 * radius,
+            key: "location",
+        }
+      })
+    }
     // sepearte post populate filters from initial filters
     const {postPopulateFilters, ...initialFilters} = filters;
     // filtering the docs as per the provided filters
@@ -30,9 +41,7 @@ const paginate = schema => {
     let docsPipeline = [...pipeline, ...(options.pipeline || [])];
 
     // adding location based search filters if given by user
-    if (geoFilters) {
-      docsPipeline.push({$match: geoFilters});
-    }
+    
 
     // populating the fields if requested by user
     if (options.populate) {
@@ -146,7 +155,6 @@ const paginate = schema => {
 
     // calculating the total count of docs we got from the defined pipeline
     const countPipeline = [...docsPipeline];
-
     // applying the defined limit, sort and skip
     docsPipeline.push({$sort: {[sortField]: sortOrder}});
     docsPipeline.push({$skip: skip}, {$limit: limit});
@@ -158,12 +166,14 @@ const paginate = schema => {
     const countPromise = this.aggregate(countPipeline).exec();
 
     // to execute the pipeline
+    console.log("🚀 ~ file: paginate.js:171 ~ paginate ~ docsPipeline:", docsPipeline)
     const docsPromise = this.aggregate(docsPipeline).exec();
 
     // resolving the promises
     return Promise.all([countPromise, docsPromise]).then(values => {
       // seperating the counts and resulted docs
       const [counts, results] = values;
+      console.log("🚀 ~ file: paginate.js:167 ~ returnPromise.all ~ results:", results)
       const {totalResults = 0} = counts.length > 0 ? counts[0] : {};
       // defining total pages based on total results and limit
       const totalPages = Math.ceil(totalResults / limit);
