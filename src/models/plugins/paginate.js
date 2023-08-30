@@ -95,7 +95,7 @@ const paginate = schema => {
           $replaceRoot: {
             newRoot: {
               $cond: {
-                if: {$gt: [{$size: `$${path}`}, 0]},
+                if: {$gte: [{$size: `$${path}`}, 0]},
                 then: {
                   $mergeObjects: [
                     '$$ROOT',
