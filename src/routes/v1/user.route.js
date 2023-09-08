@@ -22,7 +22,7 @@ router.patch(
   '/updatePreferences',
   validate(userValidation.updateUserPreferences),
   firebaseAuth('All'),
-  userController.updateUserPreferences
+  userController.updatePreferences
 );
 
 // for deleting a user
