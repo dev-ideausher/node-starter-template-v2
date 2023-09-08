@@ -1,1 +1,6 @@
-module.exports.User = require('./user.model').User;
+const {User, Client} = require('./user.model');
+
+module.exports = {
+  User,
+  Client,
+};
