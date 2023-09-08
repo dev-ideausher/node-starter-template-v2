@@ -1,18 +1,25 @@
-const Joi = require("joi");
+const Joi = require('joi');
+
+const baseRegisterSchema = {
+  firstName: Joi.string()
+    .trim()
+    .required(),
+  lastName: Joi.string()
+    .trim()
+    .required(),
+  gender: Joi.string()
+    .trim()
+    .required(),
+  phone: Joi.string().trim(),
+  dob: Joi.string().isoDate(),
+};
 
 const register = {
   body: Joi.object().keys({
-    name: Joi.string().trim(),
-    dob: Joi.date().iso(),
-    phone: Joi.string().trim(),
-    email: Joi.string().trim(),
-    preferences: Joi.object({
-      notificationEnabled: Joi.boolean(),
-      locationShared: Joi.boolean(),
-    }).unknown(false)
-  })
-}
+    ...baseRegisterSchema,
+  }),
+};
 
 module.exports = {
-  register
-}
+  register,
+};
