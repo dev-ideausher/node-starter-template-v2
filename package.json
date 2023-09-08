@@ -4,8 +4,10 @@
   "description": "bneighbourly-backend",
   "main": "index.js",
   "scripts": {
+    "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "format": "prettier --write \"src/**/*.js\""
   },
   "author": "Tushar Inani",
   "license": "ISC",
@@ -25,9 +27,14 @@
     "mongoose": "^7.2.2",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
+    "nodemon": "^3.0.1",
     "twilio": "^4.11.2",
     "uuid": "^9.0.0",
     "validator": "^13.9.0",
     "winston": "^3.9.0"
+  },
+  "devDependencies": {
+    "prettier": "^1.19.1",
+    "prettier-airbnb-config": "^1.0.0"
   }
 }
