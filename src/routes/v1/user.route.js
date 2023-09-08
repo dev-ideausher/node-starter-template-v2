@@ -6,9 +6,16 @@ const firebaseAuth = require('../../middlewares/firebaseAuth');
 const userValidation = require('../../validations/user.validation');
 
 const {userController} = require('../../controllers');
+const {fileUploadService} = require('../../microservices');
 
 // for updating userDetails
-router.patch('/updateDetails', validate(userValidation.updateUser), firebaseAuth('All'), userController.updateUser);
+router.patch(
+  '/updateDetails',
+  fileUploadService.multerUpload.single('profilePic'),
+  firebaseAuth('All'),
+  validate(userValidation.updateDetails),
+  userController.updateUser
+);
 
 // for updating specific user preferences
 router.patch(
