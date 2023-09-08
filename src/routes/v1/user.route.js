@@ -1,31 +1,27 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 
-const validate = require("../../middlewares/validate");
-const firebaseAuth = require("../../middlewares/firebaseAuth");
-const userValidation = require("../../validations/user.validation");
+const validate = require('../../middlewares/validate');
+const firebaseAuth = require('../../middlewares/firebaseAuth');
+const userValidation = require('../../validations/user.validation');
 
-const { userController } = require("../../controllers");
+const {userController} = require('../../controllers');
 
 // for updating userDetails
-router.patch("/updateDetails",
-    validate(userValidation.updateUser),
-    firebaseAuth(),
-    userController.updateUser
-);
+router.patch('/updateDetails', validate(userValidation.updateUser), firebaseAuth('All'), userController.updateUser);
 
 // for updating specific user preferences
-router.patch("/updatePreferences",
-    validate(userValidation.updateUserPreferences),
-    firebaseAuth(),
-    userController.updateUserPreferences
-)
+router.patch(
+  '/updatePreferences',
+  validate(userValidation.updateUserPreferences),
+  firebaseAuth('All'),
+  userController.updateUserPreferences
+);
 
 // for deleting a user
-router.delete("/:userId",
-    validate(userValidation.deleteUser),
-    firebaseAuth(),
-    userController.deleteUser
-);
+router.delete('/:userId', validate(userValidation.deleteUser), firebaseAuth('Admin'), userController.deleteUser);
+
+// to soft delete a user
+router.post('/delete/:userId', validate(userValidation.deleteUser), firebaseAuth('All'), userController.softDeleteUser);
 
 module.exports = router;
