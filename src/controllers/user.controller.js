@@ -4,7 +4,7 @@ const catchAsync = require('../utils/catchAsync');
 const {userService} = require('../services');
 
 const updateUser = catchAsync(async (req, res) => {
-  const updatedUser = await userService.updateUserById(req.user._id, req.body);
+  const updatedUser = await userService.updateUserById(req.user._id, req.body, req.file);
   res.status(200).send({data: updatedUser, message: 'Your details are updated'});
 });
 
