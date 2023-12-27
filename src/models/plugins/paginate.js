@@ -43,6 +43,8 @@ const paginate = schema => {
         const matchObj = {};
         // seperating the path and fields that has to be selected from the the reffered collection
         const [path, select] = populateOption.split('::');
+        // checking whether the populating field is an array
+        const isPathAnArray = this.schema.paths[path].instance === 'Array';
         // getting the name of collection where the field is referring to
         const collectionName = mongoose.model(this.schema.obj[path].ref).collection.name;
         let isMatchRequested = false;
@@ -91,6 +93,20 @@ const paginate = schema => {
         // check if the document is selected or not by the lookup
         // if it is populate the requested select fields into the current document i.e. ROOT
         // if not the set document to empty so that we can exclude it
+        const populateFieldQueryObject = {
+          $map: {
+            input: `$${path}`,
+            as: 'element',
+            in: {
+              $mergeObjects: [
+                ...selectFields.map(field => ({
+                  [field]: `$$element.${field}`,
+                })),
+                {_id: '$$element._id'},
+              ],
+            },
+          },
+        };
         docsPipeline.push({
           $replaceRoot: {
             newRoot: {
@@ -100,20 +116,7 @@ const paginate = schema => {
                   $mergeObjects: [
                     '$$ROOT',
                     {
-                      [path]: {
-                        $map: {
-                          input: `$${path}`,
-                          as: 'element',
-                          in: {
-                            $mergeObjects: [
-                              ...selectFields.map(field => ({
-                                [field]: `$$element.${field}`,
-                              })),
-                              {_id: '$$element._id'},
-                            ],
-                          },
-                        },
-                      },
+                      [path]: isPathAnArray ? populateFieldQueryObject : {$first: populateFieldQueryObject},
                     },
                   ],
                 },
