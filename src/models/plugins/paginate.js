@@ -125,6 +125,19 @@ const paginate = schema => {
             },
           },
         });
+        if (!isPathAnArray) {
+          docsPipeline.push({
+            $addFields: {
+              [path]: {
+                $cond: {
+                  if: {$eq: [`$${path}`, []]},
+                  then: null,
+                  else: `$${path}`,
+                },
+              },
+            },
+          });
+        }
         // applying filter to exclude the document if match was applied
         // and if the above step hasn't populated the fields
         if (isMatchRequested) {
