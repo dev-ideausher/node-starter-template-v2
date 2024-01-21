@@ -6,6 +6,8 @@ const {S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand} = requ
 
 const config = require('../config/config');
 const {fileTypes} = require('../constants');
+const ApiError = require('../utils/ApiError');
+const httpStatus = require('http-status');
 const {accessKeyId, region, secretAccessKey, name} = config.aws.s3;
 
 const s3client = new S3Client({
@@ -17,7 +19,8 @@ async function fileFilter(req, file, cb) {
   if (fileTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file or data, only JPEG ,PNG and pdf is allowed!'), false);
+    console.log(file);
+    cb(new ApiError(httpStatus.BAD_REQUEST, 'Invalid file or data'), false);
   }
 }
 
@@ -41,16 +44,17 @@ async function s3Delete(Key) {
   return await s3client.send(command);
 }
 
-async function s3Upload(files, folder = 'uploads') {
+async function s3Upload(files, folder = 'uploads', private = false) {
   const params = files.map(file => {
     return {
       Bucket: name,
-      Key: `${folder}/${uuid()}-${file.originalname}`,
+      Key: `${private ? 'private' : 'public'}/${folder}/${uuid()}-${file.originalname}`,
       Body: file.buffer,
+      ContentType: file.mimetype,
     };
   });
 
-  return await Promise.all(
+  return Promise.all(
     params.map(param =>
       s3client
         .send(new PutObjectCommand(param))
