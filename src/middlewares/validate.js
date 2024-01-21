@@ -23,7 +23,7 @@ const validate = schema => async (req, res, next) => {
     );
   }
   // cherry-pick fields from the input schema ["params", "query", "body"] fields
-  const validSchema = pick(schema, ['params', 'query', 'body']);
+  const validSchema = pick(schema, ['params', 'query', 'files', 'file', 'body']);
 
   const object = pick(req, Object.keys(validSchema));
 
@@ -32,6 +32,7 @@ const validate = schema => async (req, res, next) => {
     .prefs({errors: {label: 'key'}})
     .validate(object);
 
+  console.log('🚀 ~ validate ~ error:', req.body, req.files, error);
   // If validation fails, throw 400 Bad Request error
   if (error) {
     // cleanup files buffer if exist upon validation failing
@@ -48,6 +49,7 @@ const validate = schema => async (req, res, next) => {
         })
       );
     }
+    console.log(req.body);
     const errorMessage = error.details.map(details => details.message).join(', ');
     return next(new ApiError(httpStatus.BAD_REQUEST, errorMessage));
   }
