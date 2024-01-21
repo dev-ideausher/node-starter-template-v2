@@ -1,5 +1,6 @@
 const Joi = require('joi');
 const {default: mongoose} = require('mongoose');
+const {imageTypes} = require('../constants');
 
 const dbOptionsSchema = {
   limit: Joi.number().default(10),
@@ -9,6 +10,20 @@ const dbOptionsSchema = {
     .valid('', 'asc')
     .default(''),
 };
+
+const fileSchema = (field, allowedTypes, allowedExts) => ({
+  fieldname: Joi.string().required(),
+  originalname: Joi.string().required(),
+  encoding: Joi.string().required(),
+  mimetype: Joi.string().custom((val, helpers) => {
+    if (!allowedTypes.includes(val)) {
+      return helpers.message(`${field} file must be of type ${allowedExts.join(', ')}`);
+    }
+    return val;
+  }),
+  buffer: Joi.binary().required(),
+  size: Joi.number().required(),
+});
 
 const objectId = (value, helpers) => {
   if (!value.match(/^[0-9a-fA-F]{24}$/)) {
@@ -48,20 +63,9 @@ const validateObjectBySchema = schema => (value, helpers) => {
 
 // convert comma separated values to array of strings
 const convertCSVToArray = (value, helpers) => {
-  const arr = value.split(',');
-  const arrValidated = arr.every(val => Joi.string().validate(val).error === undefined);
-  return arrValidated ? arr : helpers.error('Invalid comma separated values');
-};
-
-const convertCSVToObjectIdArray = (value, helpers) => {
-  const arr = value.split(',');
-  const arrValidated = arr.every(
-    val =>
-      Joi.string()
-        .custom(objectId)
-        .validate(val).error === undefined
-  );
-  return arrValidated ? arr : helpers.error('Invalid');
+  const tagsArray = value.split(',');
+  const tagsValidated = tagsArray.every(tag => Joi.string().validate(tag).error === undefined);
+  return tagsValidated ? tagsArray : helpers.error('Invalid comma separated values');
 };
 
 async function isTextURL(text) {
@@ -73,10 +77,10 @@ async function isTextURL(text) {
 module.exports = {
   objectId,
   isTextURL,
+  fileSchema,
   dbOptionsSchema,
   convertCSVToArray,
   parseStringToObject,
   convertFieldToRegEx,
-  convertCSVToObjectIdArray,
   validateObjectBySchema,
 };
