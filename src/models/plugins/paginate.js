@@ -161,7 +161,7 @@ const paginate = schema => {
       docsPipeline.push({$project: {...options.project}});
     }
     // defining the sort order and sort field
-    const sortOrder = options.sortOrder === 'desc' ? -1 : 1;
+    const sortOrder = options.sortOrder === 'asc' ? 1 : -1;
     const sortField = options.sortBy ? options.sortBy : 'createdAt';
 
     // calculating the total count of docs we got from the defined pipeline
