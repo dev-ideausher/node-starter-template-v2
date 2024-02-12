@@ -1,9 +1,10 @@
 const Paystack = require('@paystack/paystack-sdk');
 const httpStatus = require('http-status');
 const ApiError = require('../utils/ApiError');
+const {v4: uuidv4} = require('uuid');
 
 const config = require('../config/config');
-const {Customer} = require('../models');
+const {Customer, PaystackTransfer, User} = require('../models');
 const paystack = new Paystack(config.paystack.secretKey);
 
 async function findCustomerByUserId(userId) {
@@ -14,7 +15,7 @@ async function getSubscriptionById(id) {
   try {
     const res = await paystack.subscription.fetch({code: id});
     if (!res.status) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'Failed to get subsciption details');
+      throw new ApiError(httpStatus.BAD_REQUEST, response.message || 'Failed to get subsciption details');
     }
     return res.data;
   } catch (error) {
@@ -54,7 +55,7 @@ async function createCustomer(userId, fullName, email) {
       last_name: lastName,
     });
     if (!paystackCustomer.status) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'Failed to create customer');
+      throw new ApiError(httpStatus.BAD_REQUEST, response.message || 'Failed to create customer');
     }
 
     const {id: customerId, customer_code: customerCode} = paystackCustomer.data;
@@ -134,7 +135,7 @@ async function cancelSubscriptionById(id) {
       token: email_token,
     });
     if (!response.status) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'Failed to cancel subscription');
+      throw new ApiError(httpStatus.BAD_REQUEST, response.message || 'Failed to cancel subscription');
     }
     return true;
   } catch (err) {
@@ -142,11 +143,148 @@ async function cancelSubscriptionById(id) {
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Unable to cancel subscription');
   }
 }
+
+/* Only Nigerian banks */
+async function createrRecipient(user, account_number, bank_code) {
+  const customer = await findCustomerByUserId(user._id).then(async doc => {
+    return doc ? doc : createCustomer(user._id, user.name, user.email);
+  });
+
+  try {
+    const response = await paystack.transferrecipient.create({
+      bank_code,
+      account_number,
+      name: user.name,
+      type: 'nuban',
+      currency: 'NGN',
+    });
+    if (!response.status) {
+      throw new ApiError(httpStatus.BAD_REQUEST, response.message || 'Failed to register the bank details');
+    }
+    const {bankDetails} = await Customer.findByIdAndUpdate(
+      customer._id,
+      {
+        bankDetails: {
+          recipientCode: response.data.recipient_code,
+          name: user.name,
+          accNo: account_number,
+          bankCode: bank_code,
+        },
+      },
+      {new: true}
+    );
+    return bankDetails;
+  } catch (err) {
+    console.log('🚀 ~ cancelSubscriptionById ~ err:', err);
+    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Unable to register the bank details');
+  }
+}
+
+async function sendMoneyToRecipient(userId, karmaPoints) {
+  let customer = await findCustomerByUserId(userId);
+  if (!customer) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Please purchase subscription to redeem the points');
+  }
+  if (!customer.bankDetails) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Please register the bank details');
+  }
+  const params = {
+    amount: karmaPoints * 50 * 100,
+    source: 'balance',
+    reference: uuidv4(),
+    recipient: customer.bankDetails.recipientCode,
+    // reason: 'Holiday Flexing',
+  };
+  let attempt = 0;
+  const maxRetries = 3;
+  while (attempt < maxRetries) {
+    try {
+      const response = await paystack.transfer.initiate(params);
+      console.log('🚀 ~ sendMoneyToRecipient ~ response:', response);
+      if (!response.status) {
+        throw new ApiError(httpStatus.BAD_REQUEST, response.message || 'Failed to initialize the transfer');
+      }
+      const {id, transfer_code: transferCode, amount, reference, status, transferred_at: transferredAt} = response.data;
+      await PaystackTransfer.create({
+        id,
+        status,
+        amount,
+        reference,
+        karmaPoints,
+        transferCode,
+        transferredAt,
+        user: customer.user,
+        customer: customer._id,
+      });
+      return response.data;
+    } catch (err) {
+      console.log(`Attempt ${attempt + 1} failed:`, err);
+      if (attempt === maxRetries - 1) {
+        throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Unable to initialize the transfer after maximum retries');
+      }
+      attempt++;
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retrying
+    }
+  }
+}
+
+const verifyTransaction = async function(userId, transfer_code, otp) {
+  try {
+    const response = await paystack.transfer.finalize({
+      transfer_code,
+      otp,
+    });
+    if (!response.status) {
+      throw new ApiError(httpStatus.BAD_REQUEST, response.message);
+    }
+
+    await PaystackTransfer.findOneAndUpdate(
+      {
+        id: response.data.id,
+      },
+      {status: response.data.status},
+      {new: true}
+    ).then(async doc => {
+      await User.findOneAndUpdate({_id: userId}, {$inc: {karmaPoints: -doc.karmaPoints}});
+    });
+    return response.data;
+  } catch (err) {
+    console.log('🚀 ~ verifyTransaction ~ err:', err);
+    throw new ApiError(httpStatus.BAD_REQUEST, err.message);
+  }
+};
+
+async function resendOTPForTransaction(transfer_code) {
+  try {
+    const response = await paystack.transfer.resendOtp({
+      transfer_code,
+      reason: 'transfer',
+    });
+    if (!response.status) {
+      throw new ApiError(httpStatus.BAD_REQUEST, response.message || 'Failed to resent the otp');
+    }
+    return response.data;
+  } catch (err) {
+    console.log('🚀 ~ resendOTPForTransaction ~ err:', err);
+    throw new ApiError(httpStatus.BAD_REQUEST, err.message);
+  }
+}
+
+async function getBankDetails(userId) {
+  return Customer.findOne({user: userId});
+}
+
+
 module.exports = {
   getPlans,
   getPlanByCode,
+  getBankDetails,
+  createrRecipient,
+  verifyTransaction,
   getSubscriptionById,
+  sendMoneyToRecipient,
   purchaseSubscription,
   getSubscriptionsOfUser,
   cancelSubscriptionById,
+  resendOTPForTransaction,
 };
