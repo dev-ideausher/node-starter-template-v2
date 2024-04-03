@@ -74,6 +74,17 @@ async function isTextURL(text) {
   return !error;
 }
 
+const convertCSVToObjectIdArray = (value, helpers) => {
+  const arr = value.split(',');
+  const arrValidated = arr.every(
+    val =>
+      Joi.string()
+        .custom(objectId)
+        .validate(val).error === undefined
+  );
+  return arrValidated ? arr : helpers.error('Invalid');
+};
+
 module.exports = {
   objectId,
   isTextURL,
@@ -83,4 +94,5 @@ module.exports = {
   parseStringToObject,
   convertFieldToRegEx,
   validateObjectBySchema,
+  convertCSVToObjectIdArray
 };
