@@ -41,10 +41,9 @@ const validate = schema => async (req, res, next) => {
       req.files.forEach(file => {
         file.buffer = null;
       });
-    }
-    else if (typeof req.files === 'object') {
+    } else if (typeof req.files === 'object') {
       Object.keys(req.files).forEach(key =>
-        req.files[key].map(file => {
+        req.files[key].forEach(file => {
           file.buffer = null;
         })
       );
