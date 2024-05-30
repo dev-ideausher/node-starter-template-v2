@@ -37,12 +37,12 @@ const validate = schema => async (req, res, next) => {
   if (error) {
     // cleanup files buffer if exist upon validation failing
     if (req.file) req.file.buffer = 0;
-    if (Array.isArray(req.files)) {
-      req.files.map(file => {
+    else if (Array.isArray(req.files)) {
+      req.files.forEach(file => {
         file.buffer = null;
       });
     }
-    if (typeof req.files === 'object') {
+    else if (typeof req.files === 'object') {
       Object.keys(req.files).forEach(key =>
         req.files[key].map(file => {
           file.buffer = null;
