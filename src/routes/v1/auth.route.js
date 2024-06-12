@@ -1,11 +1,13 @@
 const express = require('express');
-const router = express.Router();
 
 const validate = require('../../middlewares/validate');
 const firebaseAuth = require('../../middlewares/firebaseAuth');
-const authValidation = require('../../validations/auth.validation');
+const {authValidation} = require('../../validations');
+const {fileUploadService} = require('../../microservices');
 
 const {authController} = require('../../controllers');
+
+const router = express.Router();
 
 router.post('/login', firebaseAuth('All'), authController.loginUser);
 

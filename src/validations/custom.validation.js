@@ -1,6 +1,5 @@
 const Joi = require('joi');
 const {default: mongoose} = require('mongoose');
-const {imageTypes} = require('../constants');
 
 const dbOptionsSchema = {
   limit: Joi.number().default(10),
@@ -94,5 +93,5 @@ module.exports = {
   parseStringToObject,
   convertFieldToRegEx,
   validateObjectBySchema,
-  convertCSVToObjectIdArray
+  convertCSVToObjectIdArray,
 };

@@ -15,6 +15,7 @@ async function sendToTopic(topic, notification, data) {
     await messaging.send(payload);
     return true;
   } catch (err) {
+    console.log(err);
     return false;
   }
 }

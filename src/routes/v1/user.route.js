@@ -1,5 +1,4 @@
 const express = require('express');
-const router = express.Router();
 
 const validate = require('../../middlewares/validate');
 const firebaseAuth = require('../../middlewares/firebaseAuth');
@@ -7,6 +6,8 @@ const userValidation = require('../../validations/user.validation');
 
 const {userController} = require('../../controllers');
 const {fileUploadService} = require('../../microservices');
+
+const router = express.Router();
 
 // for updating userDetails
 router.patch(
