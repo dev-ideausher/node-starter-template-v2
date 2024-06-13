@@ -8,7 +8,6 @@ const dbOptions = {
 const imgTypeToExtension = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
-  'image/jpeg': 'jpeg',
   'image/jpg': 'jpg',
   'image/svg': 'svg',
   'image/svg+xml': 'svg+xml',
@@ -41,5 +40,5 @@ module.exports = {
   fileTypes,
   imgTypeToExtension,
   docTypeToExtension,
-  mimetypeToExtension 
-}
+  mimetypeToExtension,
+};

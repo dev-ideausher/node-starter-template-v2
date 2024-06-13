@@ -2,13 +2,7 @@ const uuid = require('uuid').v4;
 const multer = require('multer');
 const storage = multer.memoryStorage();
 const {getSignedUrl} = require('@aws-sdk/s3-request-presigner');
-const {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-  ListObjectsV2Command,
-} = require('@aws-sdk/client-s3');
+const {S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand} = require('@aws-sdk/client-s3');
 
 const config = require('../config/config');
 const {fileTypes} = require('../constants');
