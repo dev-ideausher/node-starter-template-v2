@@ -2,7 +2,13 @@ const uuid = require('uuid').v4;
 const multer = require('multer');
 const storage = multer.memoryStorage();
 const {getSignedUrl} = require('@aws-sdk/s3-request-presigner');
-const {S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand} = require('@aws-sdk/client-s3');
+const {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  CopyObjectCommand,
+} = require('@aws-sdk/client-s3');
 
 const config = require('../config/config');
 const {fileTypes} = require('../constants');
@@ -24,6 +30,16 @@ async function fileFilter(req, file, cb) {
   }
 }
 
+function extractOriginalName(key) {
+  const parts = key.split('/');
+  const lastPart = parts[parts.length - 1];
+  const originalName = lastPart
+    .split('-')
+    .slice(1)
+    .join('-');
+  return originalName;
+}
+
 const multerUpload = multer({
   storage,
   fileFilter,
@@ -37,7 +53,6 @@ const multerUpload = multer({
  * @param {number} [expiresIn] - The duration (in seconds) for which the signed URL remains valid.
  * @returns {Promise<{ key: string, url: string }>} An object containing the S3 object key and URL.
  */
-
 async function getObjectURL(Key, signedUrl = false, expiresIn = 3600) {
   const command = new GetObjectCommand({
     Key,
@@ -53,6 +68,25 @@ async function getObjectURL(Key, signedUrl = false, expiresIn = 3600) {
 async function s3Delete(Key) {
   const command = new DeleteObjectCommand({Key, Bucket: name});
   return s3client.send(command);
+}
+
+async function s3Move(sourceKey, destinationFolderName, privateDestination = false) {
+  const copyParams = {
+    Bucket: name,
+    CopySource: `${name}/${sourceKey}`,
+    Key: `${privateDestination ? 'private' : 'public'}/${destinationFolderName}/${uuid()}-${extractOriginalName(
+      sourceKey
+    )}`,
+  };
+
+  // NOTE:
+  // Copy & Delete is not done in parallel with Promise.all
+  // To ensure that all contents of the file are first copied correctly before deletion
+  const result = await s3client.send(new CopyObjectCommand(copyParams)).then(() => getObjectURL(copyParams.Key));
+  s3Delete(sourceKey).catch(err => {
+    console.log('Could not delete original file during move operation', err);
+  });
+  return result;
 }
 
 async function s3Upload(files, folder = 'uploads', private = false, expiresIn = 3600) {
@@ -81,6 +115,7 @@ async function s3Upload(files, folder = 'uploads', private = false, expiresIn = 
 module.exports = {
   s3Upload,
   s3Delete,
+  s3Move,
   getObjectURL,
   multerUpload,
 };
