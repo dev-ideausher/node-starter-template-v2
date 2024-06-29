@@ -1,4 +1,4 @@
-const {default: mongoose} = require('mongoose');
+const mongoose = require('mongoose');
 
 const paginate = schema => {
   schema.statics.paginate = async function(filters, options, geoFilters = null) {
@@ -167,7 +167,8 @@ const paginate = schema => {
     // calculating the total count of docs we got from the defined pipeline
     const countPipeline = [...docsPipeline];
     // applying the defined limit, sort and skip
-    docsPipeline.push({$sort: {[sortField]: sortOrder}});
+    const sortQuery = options.customSort || {[sortField]: sortOrder};
+    docsPipeline.push({$sort: sortQuery});
     docsPipeline.push({$skip: skip}, {$limit: limit});
 
     // pushing the totalCount for allowing pagination
