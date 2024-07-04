@@ -89,7 +89,13 @@ async function s3Move(sourceKey, destinationFolderName, privateDestination = fal
   return result;
 }
 
-async function s3Upsert({file, existingFileKey = null, folder = 'uploads', private = false}) {
+async function s3Upsert({file, existingFileKey = null, folder, private = false}) {
+  if (!existingFileKey && !folder)
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      's3Upsert: Either existingFileKey or folder needs to be specified'
+    );
+
   const commandInput = {
     Bucket: name,
     Key: existingFileKey || `${private ? 'private' : 'public'}/${folder}/${uuid()}-${file.originalname}`,
