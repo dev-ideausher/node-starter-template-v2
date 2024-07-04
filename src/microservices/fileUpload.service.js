@@ -30,21 +30,8 @@ async function fileFilter(req, file, cb) {
   }
 }
 
-function extractOriginalName(key) {
-  const parts = key.split('/');
-  const lastPart = parts[parts.length - 1];
-  const originalName = lastPart
-    .split('-')
-    .slice(1)
-    .join('-');
-  return originalName;
-}
-
-function generateKey(fileName, folder, private = false) {
-  return `${private ? 'private' : 'public'}/${folder}/${uuid()}-${fileName.replace(
-    /\.[^/.]+$/, // replace last in a string .* with an empty string
-    ''
-  )}`;
+function generateKey(folder, private = false) {
+  return `${private ? 'private' : 'public'}/${folder}/${uuid()}`;
 }
 
 const multerUpload = multer({
@@ -81,9 +68,7 @@ async function s3Move(sourceKey, destinationFolderName, privateDestination = fal
   const copyParams = {
     Bucket: name,
     CopySource: `${name}/${sourceKey}`,
-    Key: `${privateDestination ? 'private' : 'public'}/${destinationFolderName}/${uuid()}-${extractOriginalName(
-      sourceKey
-    )}`,
+    Key: `${privateDestination ? 'private' : 'public'}/${destinationFolderName}/${uuid()}`,
   };
 
   // NOTE:
@@ -105,7 +90,7 @@ async function s3Upsert({file, existingFileKey = null, folder, private = false})
 
   const commandInput = {
     Bucket: name,
-    Key: existingFileKey || generateKey(file.originalname, folder, private),
+    Key: existingFileKey || generateKey(folder, private),
     Body: file.buffer,
     ContentType: file.mimetype,
   };
@@ -120,7 +105,7 @@ async function s3Upload(files, folder = 'uploads', private = false, expiresIn = 
   const params = files.map(file => {
     return {
       Bucket: name,
-      Key: generateKey(file.originalname, folder, private),
+      Key: generateKey(folder, private),
       Body: file.buffer,
       ContentType: file.mimetype,
     };
