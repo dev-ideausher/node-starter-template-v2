@@ -40,6 +40,13 @@ function extractOriginalName(key) {
   return originalName;
 }
 
+function generateKey(fileName, folder, private = false) {
+  return `${private ? 'private' : 'public'}/${folder}/${uuid()}-${fileName.replace(
+    /\.[^/.]+$/, // replace last in a string .* with an empty string
+    ''
+  )}`;
+}
+
 const multerUpload = multer({
   storage,
   fileFilter,
@@ -98,7 +105,7 @@ async function s3Upsert({file, existingFileKey = null, folder, private = false})
 
   const commandInput = {
     Bucket: name,
-    Key: existingFileKey || `${private ? 'private' : 'public'}/${folder}/${uuid()}-${file.originalname}`,
+    Key: existingFileKey || generateKey(file.originalname, folder, private),
     Body: file.buffer,
     ContentType: file.mimetype,
   };
@@ -113,7 +120,7 @@ async function s3Upload(files, folder = 'uploads', private = false, expiresIn = 
   const params = files.map(file => {
     return {
       Bucket: name,
-      Key: `${private ? 'private' : 'public'}/${folder}/${uuid()}-${file.originalname}`,
+      Key: generateKey(file.originalname, folder, private),
       Body: file.buffer,
       ContentType: file.mimetype,
     };
