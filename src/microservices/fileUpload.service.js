@@ -89,6 +89,20 @@ async function s3Move(sourceKey, destinationFolderName, privateDestination = fal
   return result;
 }
 
+async function s3Upsert({file, existingFileKey = null, folder = 'uploads', private = false}) {
+  const commandInput = {
+    Bucket: name,
+    Key: existingFileKey || `${private ? 'private' : 'public'}/${folder}/${uuid()}-${file.originalname}`,
+    Body: file.buffer,
+    ContentType: file.mimetype,
+  };
+
+  return s3client
+    .send(new PutObjectCommand(commandInput))
+    .then(async () => await getObjectURL(commandInput.Key))
+    .catch(() => null);
+}
+
 async function s3Upload(files, folder = 'uploads', private = false, expiresIn = 3600) {
   const params = files.map(file => {
     return {
@@ -116,6 +130,7 @@ module.exports = {
   s3Upload,
   s3Delete,
   s3Move,
+  s3Upsert,
   getObjectURL,
   multerUpload,
 };
