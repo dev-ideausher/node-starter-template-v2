@@ -30,14 +30,8 @@ async function fileFilter(req, file, cb) {
   }
 }
 
-function extractOriginalName(key) {
-  const parts = key.split('/');
-  const lastPart = parts[parts.length - 1];
-  const originalName = lastPart
-    .split('-')
-    .slice(1)
-    .join('-');
-  return originalName;
+function generateKey(folder, private = false) {
+  return `${private ? 'private' : 'public'}/${folder}/${uuid()}`;
 }
 
 const multerUpload = multer({
@@ -74,9 +68,7 @@ async function s3Move(sourceKey, destinationFolderName, privateDestination = fal
   const copyParams = {
     Bucket: name,
     CopySource: `${name}/${sourceKey}`,
-    Key: `${privateDestination ? 'private' : 'public'}/${destinationFolderName}/${uuid()}-${extractOriginalName(
-      sourceKey
-    )}`,
+    Key: `${privateDestination ? 'private' : 'public'}/${destinationFolderName}/${uuid()}`,
   };
 
   // NOTE:
@@ -89,11 +81,31 @@ async function s3Move(sourceKey, destinationFolderName, privateDestination = fal
   return result;
 }
 
+async function s3Upsert({file, existingFileKey = null, folder, private = false}) {
+  if (!existingFileKey && !folder)
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      's3Upsert: Either existingFileKey or folder needs to be specified'
+    );
+
+  const commandInput = {
+    Bucket: name,
+    Key: existingFileKey || generateKey(folder, private),
+    Body: file.buffer,
+    ContentType: file.mimetype,
+  };
+
+  return s3client
+    .send(new PutObjectCommand(commandInput))
+    .then(async () => await getObjectURL(commandInput.Key))
+    .catch(() => null);
+}
+
 async function s3Upload(files, folder = 'uploads', private = false, expiresIn = 3600) {
   const params = files.map(file => {
     return {
       Bucket: name,
-      Key: `${private ? 'private' : 'public'}/${folder}/${uuid()}-${file.originalname}`,
+      Key: generateKey(folder, private),
       Body: file.buffer,
       ContentType: file.mimetype,
     };
@@ -116,6 +128,7 @@ module.exports = {
   s3Upload,
   s3Delete,
   s3Move,
+  s3Upsert,
   getObjectURL,
   multerUpload,
 };
