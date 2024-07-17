@@ -1,5 +1,5 @@
 const Joi = require('joi');
-const {default: mongoose} = require('mongoose');
+const mongoose = require('mongoose');
 
 const dbOptionsSchema = {
   limit: Joi.number().default(10),
@@ -31,6 +31,20 @@ const objectId = (value, helpers) => {
   return new mongoose.Types.ObjectId(value);
 };
 
+const parseTypedJSON = joiSchema => (value, helpers) => {
+  try {
+    const parsedValue = JSON.parse(value);
+    if (!parsedValue) throw new Error('Could not be null');
+
+    const validationResult = joiSchema.validate(parsedValue);
+    if (validationResult.error) throw new Error(validationResult.error.message);
+
+    return parsedValue;
+  } catch (err) {
+    return helpers.message(err.message || '{{#label}} must be a valid JSON object');
+  }
+};
+
 const parseStringToObject = (value, helpers) => {
   try {
     const parsedValue = JSON.parse(value);
@@ -38,7 +52,7 @@ const parseStringToObject = (value, helpers) => {
       return parsedValue;
     }
     return helpers.message('{{#label}} must be a valid JSON object');
-  } catch (error) {
+  } catch {
     return helpers.message('{{#label}} must be a valid JSON object');
   }
 };
@@ -90,6 +104,7 @@ module.exports = {
   fileSchema,
   dbOptionsSchema,
   convertCSVToArray,
+  parseTypedJSON,
   parseStringToObject,
   convertFieldToRegEx,
   validateObjectBySchema,
