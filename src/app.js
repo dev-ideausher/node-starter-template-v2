@@ -11,6 +11,9 @@ const config = require('./config/config');
 const ApiError = require('./utils/ApiError');
 const {errorConverter, errorHandler} = require('./middlewares/error');
 
+const x = 100;
+console.log(x);
+
 const app = express();
 
 //Morgan will handle logging HTTP requests,
