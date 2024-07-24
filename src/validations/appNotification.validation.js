@@ -43,7 +43,7 @@ const getAppNotificationsSentByAdmin = getAppNotifications;
 
 const deleteAppNotification = {
   params: Joi.object().keys({
-    appNotificationId: Joi.string()
+    id: Joi.string()
       .custom(objectId)
       .required(),
   }),

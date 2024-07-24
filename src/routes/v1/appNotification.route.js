@@ -44,7 +44,7 @@ router.patch('/seen', firebaseAuth('All'), appNotificationController.updateAppNo
 
 // Delete a notification
 router.delete(
-  '/:appNotificationId',
+  '/:id',
   firebaseAuth('Admin'),
   validate(appNotificationValidation.deleteAppNotification),
   appNotificationController.deleteAppNotification

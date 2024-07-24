@@ -3,7 +3,6 @@ const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const {getPaginateConfig} = require('../utils/queryPHandler');
 const {appNotificationService, userService} = require('../services');
-const {userTypes} = require('../constants');
 const ApiError = require('../utils/ApiError');
 
 const createAppNotification = catchAsync(async (req, res) => {
@@ -15,27 +14,15 @@ const createAppNotification = catchAsync(async (req, res) => {
 });
 
 const getAppNotifications = catchAsync(async (req, res) => {
-  const {options} = getPaginateConfig(req.query);
-  options.sortBy = 'createdAt';
-  options.sortOrder = 'desc';
-
-  const appNotifications = await appNotificationService.getAppNotifications(
-    {
-      $or: [{targetRole: {$in: [userTypes.ALL, req.user.__t]}}, {user: req.user._id}],
-      scheduledAt: {$gte: req.user.createdAt},
-    },
-    options
-  );
-  res.json({data: appNotifications});
+  const {filters, options} = getPaginateConfig(req.query);
+  const data = await appNotificationService.getMyAppNotifications(req.user, filters, options);
+  res.json({data});
 });
 
 const getAppNotificationsSentByAdmin = catchAsync(async (req, res) => {
   const {filters, options} = getPaginateConfig(req.query);
-  const appNotifications = await appNotificationService.getAppNotifications(
-    {...filters, isCreatedByAdmin: true},
-    options
-  );
-  res.json({data: appNotifications});
+  const data = await appNotificationService.getAppNotifications({...filters, isCreatedByAdmin: true}, options);
+  res.json({data});
 });
 
 const updateAppNotificationsLastSeenAt = catchAsync(async (req, res) => {
@@ -46,10 +33,9 @@ const updateAppNotificationsLastSeenAt = catchAsync(async (req, res) => {
 });
 
 const deleteAppNotification = catchAsync(async (req, res) => {
-  const {appNotificationId} = req.params;
-  const appNotification = await appNotificationService.deleteAppNotification(appNotificationId);
-  if (!appNotification)
-    throw new ApiError(httpStatus.NOT_FOUND, `Could not find a notification with id ${appNotificationId}`);
+  const {id} = req.params;
+  const appNotification = await appNotificationService.deleteAppNotification(id);
+  if (!appNotification) throw new ApiError(httpStatus.NOT_FOUND, `Could not find a notification with id ${id}`);
   res.status(httpStatus.NO_CONTENT).send();
 });
 
