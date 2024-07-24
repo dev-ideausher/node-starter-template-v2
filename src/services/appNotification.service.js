@@ -15,6 +15,6 @@ const getMyAppNotifications = (user, filters, options) =>
     options
   );
 
-const deleteAppNotification = id => AppNotification.findByIdAndDelete(id);
+const deleteAppNotificationById = id => AppNotification.findByIdAndDelete(id);
 
-module.exports = {createAppNotification, getAppNotifications, getMyAppNotifications, deleteAppNotification};
+module.exports = {createAppNotification, getAppNotifications, getMyAppNotifications, deleteAppNotificationById};

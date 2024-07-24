@@ -34,7 +34,7 @@ const updateAppNotificationsLastSeenAt = catchAsync(async (req, res) => {
 
 const deleteAppNotification = catchAsync(async (req, res) => {
   const {id} = req.params;
-  const appNotification = await appNotificationService.deleteAppNotification(id);
+  const appNotification = await appNotificationService.deleteAppNotificationById(id);
   if (!appNotification) throw new ApiError(httpStatus.NOT_FOUND, `Could not find a notification with id ${id}`);
   res.status(httpStatus.NO_CONTENT).send();
 });
