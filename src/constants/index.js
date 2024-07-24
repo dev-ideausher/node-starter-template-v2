@@ -33,7 +33,15 @@ const imageTypes = Object.keys(imgTypeToExtension);
 const docTypes = Object.keys(docTypeToExtension);
 const fileTypes = [...imageTypes, ...docTypes];
 
+const userTypes = {
+  ALL: 'All',
+  // Add all user discriminators here
+  ADMIN: 'Admin',
+  NORMAL_USER: 'NormalUser',
+};
+
 module.exports = {
+  userTypes,
   dbOptions,
   imageTypes,
   docTypes,

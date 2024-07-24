@@ -38,6 +38,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    appNotificationsLastSeenAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {timestamps: true}
 );
