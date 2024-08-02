@@ -1,6 +1,6 @@
 const httpStatus = require('http-status');
 
-const AppError = require('./app-error');
+const AppError = require('./ApiError');
 
 /**
  * A factory class for CRUD operations on a Mongoose model.
@@ -39,8 +39,7 @@ class CrudFactory {
     if (populateOptions) query.populate(populateOptions);
 
     const doc = await query;
-    if (!doc)
-      throw new AppError(`Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
+    if (!doc) throw new AppError(`Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
 
     return doc;
   }
@@ -57,11 +56,7 @@ class CrudFactory {
     if (populateOptions) query.populate(populateOptions);
 
     const doc = await query;
-    if (!doc)
-      throw new AppError(
-        `Could not find ${this.entityName} with the given filters`,
-        httpStatus.NOT_FOUND
-      );
+    if (!doc) throw new AppError(`Could not find ${this.entityName} with the given filters`, httpStatus.NOT_FOUND);
 
     return doc;
   }
@@ -78,8 +73,7 @@ class CrudFactory {
       new: true,
       runValidators: true,
     });
-    if (!doc)
-      throw new AppError(`Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
+    if (!doc) throw new AppError(`Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
     return doc;
   }
 
@@ -95,11 +89,7 @@ class CrudFactory {
       new: true,
       runValidators: true,
     });
-    if (!doc)
-      throw new AppError(
-        `Could not find ${this.entityName} with the given filters`,
-        httpStatus.NOT_FOUND
-      );
+    if (!doc) throw new AppError(`Could not find ${this.entityName} with the given filters`, httpStatus.NOT_FOUND);
     return doc;
   }
 
@@ -116,11 +106,7 @@ class CrudFactory {
       runValidators: true,
       upsert: true,
     });
-    if (!doc)
-      throw new AppError(
-        `Could not find ${this.entityName} with the given filters`,
-        httpStatus.NOT_FOUND
-      );
+    if (!doc) throw new AppError(`Could not find ${this.entityName} with the given filters`, httpStatus.NOT_FOUND);
     return doc;
   }
 
@@ -142,8 +128,7 @@ class CrudFactory {
    */
   async deleteOneById(id) {
     const doc = await this.Model.findByIdAndDelete(id);
-    if (!doc)
-      throw new AppError(`Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
+    if (!doc) throw new AppError(`Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
     return doc;
   }
 
@@ -155,11 +140,7 @@ class CrudFactory {
    */
   async deleteOne(filters) {
     const doc = await this.Model.findOneAndDelete(filters);
-    if (!doc)
-      throw new AppError(
-        `Could not find ${this.entityName} with the given filters`,
-        httpStatus.NOT_FOUND
-      );
+    if (!doc) throw new AppError(`Could not find ${this.entityName} with the given filters`, httpStatus.NOT_FOUND);
     return doc;
   }
 
