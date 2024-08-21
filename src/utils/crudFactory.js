@@ -1,15 +1,17 @@
 const httpStatus = require('http-status');
+// eslint-disable-next-line no-unused-vars
+const {FilterQuery, PopulateOptions, UpdateQuery, Model} = require('mongoose');
 
-const ApiError = require('./ApiError');
+const ApiError = require('../utils/ApiError');
 
 /**
- * A factory class for CRUD operations on a Mongoose model.
- * @template T
+ * A factory class for CRUD operations with a Mongoose model.
+ * @template TRaw - The type of the raw document.
+ * @template TMethods - The type of additional methods for the model (default is object).
  */
 class CrudFactory {
   /**
-   * Creates an instance of CrudFactory.
-   * @param {import('mongoose').Model<T>} mongooseModel - The Mongoose model.
+   * @param {Model<TRaw, object, TMethods>} mongooseModel - The Mongoose model to use.
    * @param {string} entityName - The name of the entity.
    */
   constructor(mongooseModel, entityName) {
@@ -17,14 +19,32 @@ class CrudFactory {
     this.entityName = entityName;
   }
 
+  /**
+   * Retrieves multiple documents based on filters.
+   * @param {FilterQuery<TRaw>} filters - The filters to apply.
+   * @param {PopulateOptions | PopulateOptions[] | null} [populateOptions=null] - The populate options.
+   * @returns {Promise<TRaw[]>} - A promise that resolves to an array of documents.
+   */
+  async getMany(filters, populateOptions = null) {
+    const query = this.Model.find(filters);
+    if (populateOptions) query.populate(populateOptions);
+    return query;
+  }
+
+  /**
+   * Retrieves paginated documents based on filters.
+   * @param {FilterQuery<TRaw>} filters - The filters to apply.
+   * @param {PaginateOptions} options - The pagination options.
+   * @returns {Promise<any>} - A promise that resolves to a paginated result.
+   */
   async getManyPaginated(filters, options) {
     return this.Model.paginate(filters, options);
   }
 
   /**
    * Creates a new document.
-   * @param {Partial<T>} data - The data to create the document with.
-   * @returns {Promise<T>} The created document.
+   * @param {Partial<TRaw> & { _id?: MongoObjectId }} data - The data for the new document.
+   * @returns {Promise<TRaw>} - A promise that resolves to the created document.
    */
   async create(data) {
     const doc = await this.Model.create(data);
@@ -32,61 +52,66 @@ class CrudFactory {
   }
 
   /**
-   * Gets a document by its ID.
-   * @param {import('mongoose').Types.ObjectId} id - The document ID.
-   * @param {import('mongoose').PopulateOptions | import('mongoose').PopulateOptions[] | null} [populateOptions=null] - The populate options.
-   * @returns {Promise<T>} The found document.
-   * @throws {ApiError} If the document is not found.
+   * Retrieves a single document by its ID.
+   * @param {MongoObjectId} id - The ID of the document.
+   * @param {PopulateOptions | PopulateOptions[] | null} [populateOptions=null] - The populate options.
+   * @param {boolean} [raiseNotFoundError=true] - Whether to raise an error if the document is not found.
+   * @returns {Promise<TRaw>} - A promise that resolves to the document.
+   * @throws {ApiError} - Throws an error if the document is not found and raiseNotFoundError is true.
    */
-  async getOneById(id, populateOptions = null) {
+  async getOneById(id, populateOptions = null, raiseNotFoundError = true) {
     const query = this.Model.findById(id);
     if (populateOptions) query.populate(populateOptions);
 
     const doc = await query;
-    if (!doc) throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with id ${id}`);
+    if (!doc && raiseNotFoundError)
+      throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with id ${id}`);
 
     return doc;
   }
 
   /**
-   * Gets a document by filters.
-   * @param {import('mongoose').FilterQuery<T>} filters - The filters to apply.
-   * @param {import('mongoose').PopulateOptions | import('mongoose').PopulateOptions[] | null} [populateOptions=null] - The populate options.
-   * @returns {Promise<T>} The found document.
-   * @throws {ApiError} If the document is not found.
+   * Retrieves a single document based on filters.
+   * @param {FilterQuery<TRaw>} filters - The filters to apply.
+   * @param {PopulateOptions | PopulateOptions[] | null} [populateOptions=null] - The populate options.
+   * @param {boolean} [raiseNotFoundError=true] - Whether to raise an error if the document is not found.
+   * @returns {Promise<TRaw>} - A promise that resolves to the document.
+   * @throws {ApiError} - Throws an error if the document is not found and raiseNotFoundError is true.
    */
-  async getOne(filters, populateOptions = null) {
+  async getOne(filters, populateOptions = null, raiseNotFoundError = true) {
     const query = this.Model.findOne(filters);
     if (populateOptions) query.populate(populateOptions);
 
     const doc = await query;
-    if (!doc) throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with the given filters`);
+    if (!doc && raiseNotFoundError)
+      throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with the given filters`);
 
     return doc;
   }
 
   /**
-   * Updates a document by its ID.
-   * @param {import('mongoose').Types.ObjectId} id - The document ID.
-   * @param {import('mongoose').UpdateQuery<T>} data - The update data.
-   * @returns {Promise<T>} The updated document.
-   * @throws {ApiError} If the document is not found.
+   * Updates a single document by its ID.
+   * @param {MongoObjectId} id - The ID of the document.
+   * @param {UpdateQuery<TRaw>} data - The update data.
+   * @returns {Promise<TRaw>} - A promise that resolves to the updated document.
+   * @throws {ApiError} - Throws an error if the document is not found.
    */
   async updateOneById(id, data) {
     const doc = await this.Model.findByIdAndUpdate(id, data, {
       new: true,
       runValidators: true,
     });
-    if (!doc) throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with id ${id}`);
+    if (!doc)
+      throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
     return doc;
   }
 
   /**
-   * Updates a document by filters.
-   * @param {import('mongoose').FilterQuery<T>} filters - The filters to apply.
-   * @param {import('mongoose').UpdateQuery<T>} data - The update data.
-   * @returns {Promise<T>} The updated document.
-   * @throws {ApiError} If the document is not found.
+   * Updates a single document based on filters.
+   * @param {FilterQuery<TRaw>} filters - The filters to apply.
+   * @param {UpdateQuery<TRaw>} data - The update data.
+   * @returns {Promise<TRaw>} - A promise that resolves to the updated document.
+   * @throws {ApiError} - Throws an error if the document is not found.
    */
   async updateOne(filters, data) {
     const doc = await this.Model.findOneAndUpdate(filters, data, {
@@ -98,11 +123,11 @@ class CrudFactory {
   }
 
   /**
-   * Upserts a document by filters.
-   * @param {import('mongoose').FilterQuery<T>} filters - The filters to apply.
-   * @param {import('mongoose').UpdateQuery<T>} data - The update data.
-   * @returns {Promise<T>} The upserted document.
-   * @throws {ApiError} If the document is not found.
+   * Upserts a single document based on filters.
+   * @param {FilterQuery<TRaw>} filters - The filters to apply.
+   * @param {UpdateQuery<TRaw>} data - The update data.
+   * @returns {Promise<TRaw>} - A promise that resolves to the upserted document.
+   * @throws {ApiError} - Throws an error if the document is not found.
    */
   async upsertOne(filters, data) {
     const doc = await this.Model.findOneAndUpdate(filters, data, {
@@ -115,20 +140,20 @@ class CrudFactory {
   }
 
   /**
-   * Updates multiple documents by filters.
-   * @param {import('mongoose').FilterQuery<T>} filters - The filters to apply.
-   * @param {import('mongoose').UpdateQuery<T>} data - The update data.
-   * @returns {Promise<import('mongoose').UpdateWriteOpResult>} The update result.
+   * Updates multiple documents based on filters.
+   * @param {FilterQuery<TRaw>} filters - The filters to apply.
+   * @param {UpdateQuery<TRaw>} data - The update data.
+   * @returns {Promise<any>} - A promise that resolves to the update result.
    */
   async updateMany(filters, data) {
     return this.Model.updateMany(filters, data);
   }
 
   /**
-   * Deletes a document by its ID.
-   * @param {import('mongoose').Types.ObjectId} id - The document ID.
-   * @returns {Promise<T>} The deleted document.
-   * @throws {ApiError} If the document is not found.
+   * Deletes a single document by its ID.
+   * @param {MongoObjectId} id - The ID of the document.
+   * @returns {Promise<TRaw>} - A promise that resolves to the deleted document.
+   * @throws {ApiError} - Throws an error if the document is not found.
    */
   async deleteOneById(id) {
     const doc = await this.Model.findByIdAndDelete(id);
@@ -137,10 +162,10 @@ class CrudFactory {
   }
 
   /**
-   * Deletes a document by filters.
-   * @param {import('mongoose').FilterQuery<T>} filters - The filters to apply.
-   * @returns {Promise<T>} The deleted document.
-   * @throws {ApiError} If the document is not found.
+   * Deletes a single document based on filters.
+   * @param {FilterQuery<TRaw>} filters - The filters to apply.
+   * @returns {Promise<TRaw>} - A promise that resolves to the deleted document.
+   * @throws {ApiError} - Throws an error if the document is not found.
    */
   async deleteOne(filters) {
     const doc = await this.Model.findOneAndDelete(filters);
@@ -149,9 +174,9 @@ class CrudFactory {
   }
 
   /**
-   * Deletes multiple documents by filters.
-   * @param {import('mongoose').FilterQuery<T>} filters - The filters to apply.
-   * @returns {Promise<import('mongoose').DeleteResult>} The delete result.
+   * Deletes multiple documents based on filters.
+   * @param {FilterQuery<TRaw>} filters - The filters to apply.
+   * @returns {Promise<any>} - A promise that resolves to the delete result.
    */
   async deleteMany(filters) {
     return this.Model.deleteMany(filters);
