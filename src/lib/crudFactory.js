@@ -67,7 +67,7 @@ class CrudFactory {
 
     const doc = await query;
     if (!doc && raiseNotFoundError)
-      throw new ApiError(`Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
+      throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with id ${id}`);
 
     return doc;
   }
@@ -86,7 +86,7 @@ class CrudFactory {
 
     const doc = await query;
     if (!doc && raiseNotFoundError)
-      throw new ApiError(`Could not find ${this.entityName} with the given filters`, httpStatus.NOT_FOUND);
+      throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with the given filters`);
 
     return doc;
   }
@@ -108,7 +108,7 @@ class CrudFactory {
     if (queryModifier) query = queryModifier(query);
 
     const doc = await query;
-    if (!doc) throw new ApiError(`Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
+    if (!doc) throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with id ${id}`);
     return doc;
   }
 
@@ -124,7 +124,7 @@ class CrudFactory {
       new: true,
       runValidators: true,
     });
-    if (!doc) throw new ApiError(`Could not find ${this.entityName} with the given filters`, httpStatus.NOT_FOUND);
+    if (!doc) throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with the given filters`);
     return doc;
   }
 
@@ -141,7 +141,7 @@ class CrudFactory {
       runValidators: true,
       upsert: true,
     });
-    if (!doc) throw new ApiError(`Could not find ${this.entityName} with the given filters`, httpStatus.NOT_FOUND);
+    if (!doc) throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with the given filters`);
     return doc;
   }
 
@@ -166,7 +166,7 @@ class CrudFactory {
     let query = this.Model.findByIdAndDelete(id);
     if (queryModifier) query = queryModifier(query);
     const doc = await query;
-    if (!doc) throw new ApiError(`Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
+    if (!doc) throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with id ${id}`);
     return doc;
   }
 
@@ -178,7 +178,7 @@ class CrudFactory {
    */
   async deleteOne(filters) {
     const doc = await this.Model.findOneAndDelete(filters);
-    if (!doc) throw new ApiError(`Could not find ${this.entityName} with the given filters`, httpStatus.NOT_FOUND);
+    if (!doc) throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with the given filters`);
     return doc;
   }
 
