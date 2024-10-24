@@ -23,10 +23,12 @@ class CrudFactory {
    * Retrieves multiple documents based on filters.
    * @param {FilterQuery<TRaw>} filters - The filters to apply.
    * @param {PopulateOptions | PopulateOptions[] | null} [populateOptions=null] - The populate options.
+   * @param {(query: mongoose.Query<any, TRaw>) => mongoose.Query<any, TRaw>} [queryModifier] - A function that receives the result of `Model.find()` and returns the modified query.
    * @returns {Promise<TRaw[]>} - A promise that resolves to an array of documents.
    */
-  async getMany(filters, populateOptions = null) {
-    const query = this.Model.find(filters);
+  async getMany(filters, populateOptions = null, queryModifier) {
+    let query = this.Model.find(filters);
+    if (queryModifier) query = queryModifier(query);
     if (populateOptions) query.populate(populateOptions);
     return query;
   }
@@ -65,7 +67,7 @@ class CrudFactory {
 
     const doc = await query;
     if (!doc && raiseNotFoundError)
-      throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with id ${id}`);
+      throw new ApiError(`Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
 
     return doc;
   }
@@ -84,7 +86,7 @@ class CrudFactory {
 
     const doc = await query;
     if (!doc && raiseNotFoundError)
-      throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with the given filters`);
+      throw new ApiError(`Could not find ${this.entityName} with the given filters`, httpStatus.NOT_FOUND);
 
     return doc;
   }
@@ -93,16 +95,20 @@ class CrudFactory {
    * Updates a single document by its ID.
    * @param {MongoObjectId} id - The ID of the document.
    * @param {UpdateQuery<TRaw>} data - The update data.
+   * @param {(query: mongoose.Query<any, TRaw>) => mongoose.Query<any, TRaw>} [queryModifier] - A function that receives the result of `Model.find()` and returns the modified query.
    * @returns {Promise<TRaw>} - A promise that resolves to the updated document.
    * @throws {ApiError} - Throws an error if the document is not found.
    */
-  async updateOneById(id, data) {
-    const doc = await this.Model.findByIdAndUpdate(id, data, {
+  async updateOneById(id, data, queryModifier) {
+    let query = this.Model.findByIdAndUpdate(id, data, {
       new: true,
       runValidators: true,
     });
-    if (!doc)
-      throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
+
+    if (queryModifier) query = queryModifier(query);
+
+    const doc = await query;
+    if (!doc) throw new ApiError(`Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
     return doc;
   }
 
@@ -118,7 +124,7 @@ class CrudFactory {
       new: true,
       runValidators: true,
     });
-    if (!doc) throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with the given filters`);
+    if (!doc) throw new ApiError(`Could not find ${this.entityName} with the given filters`, httpStatus.NOT_FOUND);
     return doc;
   }
 
@@ -129,13 +135,13 @@ class CrudFactory {
    * @returns {Promise<TRaw>} - A promise that resolves to the upserted document.
    * @throws {ApiError} - Throws an error if the document is not found.
    */
-  async upsertOne(filters, data) {
+  async upsertOne(filters, data = {}) {
     const doc = await this.Model.findOneAndUpdate(filters, data, {
       new: true,
       runValidators: true,
       upsert: true,
     });
-    if (!doc) throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with the given filters`);
+    if (!doc) throw new ApiError(`Could not find ${this.entityName} with the given filters`, httpStatus.NOT_FOUND);
     return doc;
   }
 
@@ -152,12 +158,15 @@ class CrudFactory {
   /**
    * Deletes a single document by its ID.
    * @param {MongoObjectId} id - The ID of the document.
+   * @param {(query: mongoose.Query<any, TRaw>) => mongoose.Query<any, TRaw>} [queryModifier] - A function that receives the result of `Model.find()` and returns the modified query.
    * @returns {Promise<TRaw>} - A promise that resolves to the deleted document.
    * @throws {ApiError} - Throws an error if the document is not found.
    */
-  async deleteOneById(id) {
-    const doc = await this.Model.findByIdAndDelete(id);
-    if (!doc) throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with id ${id}`);
+  async deleteOneById(id, queryModifier) {
+    let query = this.Model.findByIdAndDelete(id);
+    if (queryModifier) query = queryModifier(query);
+    const doc = await query;
+    if (!doc) throw new ApiError(`Could not find ${this.entityName} with id ${id}`, httpStatus.NOT_FOUND);
     return doc;
   }
 
@@ -169,7 +178,7 @@ class CrudFactory {
    */
   async deleteOne(filters) {
     const doc = await this.Model.findOneAndDelete(filters);
-    if (!doc) throw new ApiError(httpStatus.NOT_FOUND, `Could not find ${this.entityName} with the given filters`);
+    if (!doc) throw new ApiError(`Could not find ${this.entityName} with the given filters`, httpStatus.NOT_FOUND);
     return doc;
   }
 
@@ -180,6 +189,15 @@ class CrudFactory {
    */
   async deleteMany(filters) {
     return this.Model.deleteMany(filters);
+  }
+
+  /**
+   * Counts documents based on filters.
+   * @param {FilterQuery<TRaw>} filters - The filters to apply.
+   * @returns {Promise<number>} - A promise that resolves to the count of documents.
+   */
+  async countDocuments(filters) {
+    return this.Model.countDocuments(filters);
   }
 }
 
