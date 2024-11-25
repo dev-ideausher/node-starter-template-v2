@@ -66,7 +66,7 @@ module.exports.paginate = schema => {
         // iterating over the fields that has to be selected
         const selectFields =
           select === '*'
-            ? Object.keys(mongoose.model(populatingModelName).schema.obj)
+            ? Object.keys(mongoose.model(populatingModelName).schema.paths)
             : select.split(',').map(ele => {
                 // seperating the requested select field from its match condition
                 // e.g. i want name field but its value should match with pattern "Manish"
