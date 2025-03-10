@@ -13,7 +13,8 @@ mongoose
     console.log(err);
   });
 
-app.listen(config.port, () => {
+// init server and store it in the server variable, previously it wasn't being stored in the var
+server = app.listen(config.port, () => {
   console.log(`BNeighbourly app listening on port ${config.port}!`);
 });
 
