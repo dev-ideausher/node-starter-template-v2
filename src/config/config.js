@@ -19,6 +19,7 @@ const envVarsSchema = Joi.object()
     AWS_S3_REGION: Joi.string().required(),
     AWS_S3_ACCESS_KEY_ID: Joi.string().required(),
     AWS_S3_BUCKET: Joi.string().required(),
+    PAYSTACK_SECRET_KEY: Joi.string().optional().allow(''),
   })
   .unknown();
 
@@ -45,6 +46,9 @@ module.exports = {
       accessKeyId: envVars.AWS_S3_ACCESS_KEY_ID,
       secretAccessKey: envVars.AWS_S3_SECRET_ACCESS_KEY,
     },
+  },
+  paystack: {
+    secretKey: envVars.PAYSTACK_SECRET_KEY || '',
   },
   mongoose: {
     // exception added for TDD purpose
